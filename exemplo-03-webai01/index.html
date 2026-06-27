@@ -1,0 +1,69 @@
+<output id="output"></output>
+<!-- https://www.jsdelivr.com/package/npm/markdown -->
+<script src="https://cdn.jsdelivr.net/npm/markdown@0.5.0/lib/markdown.min.js"></script>
+<script>
+    const output = document.getElementById('output');
+
+    (async () => {
+
+          // 1. Verifica se a API de IA está disponível no navegador
+        console.log("Avaliando objetos de IA disponíveis:", {
+        window_ai: !!window.ai,
+        languageModel: window.ai?.languageModel ? "Disponível" : "Não encontrado",
+        assistant: window.ai?.assistant ? "Disponível (Nome Antigo)" : "Não encontrado"
+    });
+
+    // Se o seu navegador ainda usa o padrão antigo 'assistant'
+    const aiProvider = window.ai?.languageModel || window.ai?.assistant;
+
+    if (!aiProvider) {
+        output.innerHTML = `Erro: Objeto de IA não encontrado. <br>
+                            Verifique o Console (F12) para detalhes técnicos.`;
+        return;
+    }
+        try {
+            output.innerHTML = "Iniciando modelo...";
+
+            // 2. CORREÇÃO AQUI: Obtém as capacidades (parâmetros) do modelo
+            const capabilities = await aiProvider.capabilities();
+            console.log("Language Model Capabilities:", capabilities);
+
+            // Extrai a temperatura e topK padrão
+            const temperature = capabilities.defaultTemperature;
+            const topK = capabilities.defaultTopK;
+
+            const initialPrompts = [
+                {
+                    role: 'system',
+                    content: `Você é um assistente de IA que responde de forma clara e objetiva.`
+                }
+            ];
+
+            const question = 'Quem inventou o JavaScript?';
+            output.innerHTML = "Gerando resposta...";
+
+            // 3. CORREÇÃO AQUI: Criação da sessão usando ai.languageModel
+            const session = await aiProvider.create({
+                expectedInputLanguages: ["pt"],
+                temperature,
+                topK,
+                initialPrompts,
+            });
+
+            // 4. O método correto para streaming geralmente espera uma string direta ou a estrutura correta da API
+            const responseStream = await session.promptStreaming(question);
+            
+            output.innerHTML = "";
+            let fullText = "";
+            
+            for await (const chunk of responseStream) {
+                fullText = chunk; // No Chrome, o chunk acumula o texto ou vem em partes dependendo da versão
+                output.innerHTML = markdown.toHTML(fullText);
+            }
+
+        } catch (error) {
+            console.error(error);
+            output.innerHTML = "Erro ao processar: " + error.message;
+        }
+    })();
+</script>
